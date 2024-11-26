@@ -1,0 +1,95 @@
+Fn: 0000_0000
+numStdFunc: 16
+vendor: AuthenticAMD
+
+Fn: 0000_0001
+stepping: 1
+cpuFamily: 25
+cpuModel: 68
+brandId: 0
+CLFlush: 8
+logProcCount: 12
+localApicId: 4
+f1_ecx: 01111110111110000011001000001011
+f1_edx: 00010111100010111111101111111111
+Count Feature Identifiers: 40
+
+Fn: 0000_0005
+monLineSizeMin: 64
+monLineSizeMin: 64
+emx: 1
+ibe: 1
+
+Fn: 0000_0006
+arat: 1
+effFreq: 1
+
+Fn: 0000_0007
+CLFLUSHOPT: 1
+maxSubFn: 0
+f7_ebx: 00100001100111001001011110101001
+f7_ecx: 00000000010000000000011010011100
+
+Fn: 0000_000B
+threadMaskWidth: 1
+numLogProc: 2
+inputEcx: 0
+hierarchyLevel: 1
+x2APIC_ID: 4
+
+Fn: 0000_000B.1
+coreMaskWidth: 4
+numLogCores: 12
+inputEcx: 1
+hierarchyLevel: 2
+x2APIC_ID: 8250
+
+Fn: 0000_000D
+xFeatureSupportedMask: 00000000000000000000001000000111
+xFeatureEnabledSizeMax: 2440
+xFeatureSupportedSizeMax: 2440
+XFeatureSupportedMask: 00000000000000000000000000000000
+
+Fn: 0000_000D.1
+xsaveopt: 1
+xsavec: 1
+xgetbv: 1
+xsaves: 1
+cet_u: 1
+cet_s: 1
+
+Fn: 0000_000D.2
+ymmSaveStateSize: 256
+ymmSaveStateOffset: 576
+
+Fn: 0000_000D.11
+cetUserSize: 16
+cetUserOffset: 0
+supervisorState: 1
+
+Fn: 0000_000D.12
+cetSupervisorSize: 24
+cetSupervisorOffset: 0
+supervisorState: 1
+
+Fn: 0000_000D.3E
+lwpSaveStateSize: 0
+lwpSaveStateOffset: 0
+
+Fn: 0000_000F
+Max_RMID: 255
+L3CacheMon: 1
+
+Fn: 0000_000F.1
+counterSize: 0
+overflowBit: 0
+scaleFactor: 64
+max_RMID: 255
+L3CacheOccMon: 1
+L3CacheBWMonEvt0: 1
+L3CacheBWMonEvt1: 1
+
+Fn: 0000_0010
+L3Alloc: 1
+
+Fn: 0000_0010.1
