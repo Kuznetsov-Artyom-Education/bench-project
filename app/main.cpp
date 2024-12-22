@@ -1,14 +1,27 @@
 #include <array>
+#include <atomic>
 #include <bitset>
+#include <chrono>
 #include <cstdint>
 #include <cstring>
 #include <iostream>
+#include <sstream>
 #include <string>
+#include <thread>
 #ifdef WIN32
 #include <intrin.h>
 #else
+#include <cmath>
 #include <cpuid.h>
 #endif
+
+#include "ftxui/component/captured_mouse.hpp"
+#include "ftxui/component/component.hpp"
+#include "ftxui/component/component_base.hpp"
+#include "ftxui/component/component_options.hpp"
+#include "ftxui/component/screen_interactive.hpp"
+#include "ftxui/dom/elements.hpp"
+#include "ftxui/util/ref.hpp"
 
 namespace {
 enum : uint32_t { EAX, EBX, ECX, EDX };
@@ -49,7 +62,7 @@ std::string getProcessorBrandString() {
 } // namespace
 
 struct Context {
-  void collectData(uint32_t eax, uint32_t ecx) {
+  void parse() {
     cpuid_t regs;
 
     // Fn0000_0000_EAX (num std fn)
@@ -57,9 +70,11 @@ struct Context {
     numStdFunc = regs[EAX];
 
     // Fn0000_0000_E[D,C,B]X (vendor name 12 bytes)
-    std::memcpy(vendor, &regs[EBX], 4);
-    std::memcpy(vendor + 4, &regs[EDX], 4);
-    std::memcpy(vendor + 8, &regs[ECX], 4);
+    char ven[13]{};
+    std::memcpy(ven, &regs[EBX], 4);
+    std::memcpy(ven + 4, &regs[EDX], 4);
+    std::memcpy(ven + 8, &regs[ECX], 4);
+    vendor = ven;
 
     // Fn0000_0001_EAX (Family, Model, Stepping Identifiers)
     cpuid(regs, 1);
@@ -190,7 +205,7 @@ struct Context {
     brandString = getProcessorBrandString();
   }
 
-  void printData() const {
+  void dump() const {
     auto printData = [&out = std::cout](const char *name, auto &&data) {
       out << name << ": " << data << '\n';
     };
@@ -318,7 +333,8 @@ struct Context {
   }
 
   int numStdFunc;
-  char vendor[13];
+  std::string vendor;
+  std::string brandString;
   uint32_t stepping;
   uint32_t baseModel;
   uint32_t baseFamily;
@@ -381,15 +397,114 @@ struct Context {
   std::bitset<32> L3ShareAllocMask;
   uint32_t CDP;
   uint32_t COS_MAX;
-  std::string brandString;
 };
 
 int main(int argc, char *argv[]) {
-  uint32_t eax, ecx;
+  using namespace ftxui;
+  auto screen = ScreenInteractive::Fullscreen();
 
   Context context;
-  context.collectData(eax, ecx);
-  context.printData();
+  context.parse();
+  // context.dump();
+
+  int shift = 0;
+
+  auto demoCpu = [&shift](int width, int height) {
+    std::vector<int> output(width);
+    for (int i = 0; i < width; ++i) {
+      float v = 0.5f;
+      v += 0.1f * std::sin((i + shift) * 0.1f);
+      v += 0.2f * std::sin((i + shift + 10) * 0.15f);
+      v += 0.1f * std::sin((i + shift) * 0.03f);
+      v *= height;
+      output[i] = (int)v;
+    }
+    return output;
+  };
+
+  auto monitor = Renderer([&] {
+    auto frequency = vbox({
+        text("Frequency [Mhz]") | hcenter,
+        hbox({
+            vbox({
+                text("2400 "),
+                filler(),
+                text("1200 "),
+                filler(),
+                text("0 "),
+            }),
+            graph(std::ref(demoCpu)) | flex,
+        }) | flex,
+    });
+    return frequency;
+  });
+
+  auto proc = Renderer([&] {
+    auto info =
+        vbox({text("Vendor: " + context.vendor),
+              text("Model: " + context.brandString),
+              text("Stepping: " + std::to_string(context.stepping)),
+              text("FamilyID: " + std::to_string(context.cpuFamily)),
+              text("ModelID: " + std::to_string(context.cpuModel)),
+              text("num log cores: " + std::to_string(context.numLogCores)),
+              text("num phy cores: " +
+                   std::to_string(context.numLogCores / context.numLogProc)),
+              text("-- More --")}) |
+        border;
+    return vbox({info});
+  });
+
+  int tabIndex = 0;
+  std::vector<std::string> tabEntries = {
+      "info",
+      "monitor",
+      "benchmark",
+  };
+  auto tabSelection =
+      Menu(&tabEntries, &tabIndex, MenuOption::HorizontalAnimated());
+  auto tabContent = Container::Tab(
+      {
+          proc,
+          proc,
+          monitor,
+      },
+      &tabIndex);
+
+  auto exitButton =
+      Button("Exit", [&] { screen.Exit(); }, ButtonOption::Animated());
+
+  auto mainContainer = Container::Vertical({
+      Container::Horizontal({
+          tabSelection,
+          exitButton,
+      }),
+      tabContent,
+  });
+
+  auto mainRenderer = Renderer(mainContainer, [&] {
+    return vbox({
+        text("CPUID-TUI") | bold | hcenter,
+        hbox({
+            tabSelection->Render() | flex,
+            exitButton->Render(),
+        }),
+        tabContent->Render() | flex,
+    });
+  });
+
+  std::atomic<bool> refreshUiContinue = true;
+  std::thread refresh_ui([&] {
+    while (refreshUiContinue) {
+      using namespace std::chrono_literals;
+      std::this_thread::sleep_for(0.05s);
+      screen.Post([&] { shift++; });
+      screen.Post(Event::Custom);
+    }
+  });
+
+  screen.Loop(mainRenderer);
+  refreshUiContinue = false;
+  refresh_ui.join();
 
   return 0;
 }
